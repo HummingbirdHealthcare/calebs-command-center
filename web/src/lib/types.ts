@@ -18,10 +18,19 @@ export interface Task {
   updatedAt: string
 }
 
+export interface Category {
+  id: string
+  type: 'category'
+  name: string
+  order: number
+  createdAt: string
+}
+
 export interface Folder {
   id: string
   type: 'folder'
   parentId: string | null
+  categoryId?: string
   name: string
   summary?: string
   icon?: string

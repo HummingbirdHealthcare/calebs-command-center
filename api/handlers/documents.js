@@ -22,10 +22,14 @@ async function createFolder(context, req) {
     const body = req.body || {};
     const name = (body.name || '').trim();
     if (!name) return jsonRes(context, 400, { error: 'name is required' });
+    const parentId = body.parentId || null;
     const doc = {
       id: genId(),
       type: FOLDER_TYPE,
-      parentId: body.parentId || null,
+      parentId,
+      // Only root folders (no parent) carry a categoryId — sub-folders inherit
+      // their category implicitly by walking up to their root ancestor.
+      categoryId: parentId ? undefined : body.categoryId || undefined,
       name,
       order: Date.now(),
       createdAt: new Date().toISOString(),
@@ -102,19 +106,14 @@ async function deleteFolder(context, req, id) {
   }
 }
 
+// Returns every document, unfiltered — the client filters by folderId locally
+// so it can show a folder's contents inline in the tree as well as in the
+// selected-folder panel, without firing a query per expanded folder.
 async function listDocuments(context, req) {
   if (!requireCaleb(context, req)) return;
   try {
-    const folderIdParam = req.query.folderId;
-    const folderId = !folderIdParam || folderIdParam === 'root' ? null : folderIdParam;
     const { resources } = await getContainer()
-      .items.query({
-        query: 'SELECT * FROM c WHERE c.type = @type AND c.folderId = @folderId',
-        parameters: [
-          { name: '@type', value: DOCUMENT_TYPE },
-          { name: '@folderId', value: folderId },
-        ],
-      })
+      .items.query({ query: 'SELECT * FROM c WHERE c.type = @type', parameters: [{ name: '@type', value: DOCUMENT_TYPE }] })
       .fetchAll();
     jsonRes(context, 200, resources);
   } catch (e) {

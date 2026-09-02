@@ -1,4 +1,4 @@
-import type { Document, Folder, Task, TaskStatus } from './types'
+import type { Category, Document, Folder, Task, TaskStatus } from './types'
 
 const BASE = '/api/api'
 
@@ -54,17 +54,24 @@ export const deleteTaskNote = (id: string, noteId: string) =>
   request<Task>(`?resource=tasks&id=${id}`, { method: 'PATCH', body: JSON.stringify({ op: 'delete-note', noteId }) })
 export const deleteTask = (id: string) => request<void>(`?resource=tasks&id=${id}`, { method: 'DELETE' })
 
+// Categories
+export const listCategories = () => request<Category[]>('?resource=categories')
+export const createCategory = (name: string) =>
+  request<Category>('?resource=categories', { method: 'POST', body: JSON.stringify({ name }) })
+export const renameCategory = (id: string, name: string) =>
+  request<Category>(`?resource=categories&id=${id}`, { method: 'PATCH', body: JSON.stringify({ op: 'update', name }) })
+export const deleteCategory = (id: string) => request<void>(`?resource=categories&id=${id}`, { method: 'DELETE' })
+
 // Folders
 export const listFolders = () => request<Folder[]>('?resource=folders')
-export const createFolder = (parentId: string | null, name: string) =>
-  request<Folder>('?resource=folders', { method: 'POST', body: JSON.stringify({ parentId, name }) })
+export const createFolder = (parentId: string | null, name: string, categoryId?: string) =>
+  request<Folder>('?resource=folders', { method: 'POST', body: JSON.stringify({ parentId, name, categoryId }) })
 export const updateFolder = (id: string, changes: { name?: string; summary?: string; icon?: string }) =>
   request<Folder>(`?resource=folders&id=${id}`, { method: 'PATCH', body: JSON.stringify({ op: 'update', ...changes }) })
 export const deleteFolder = (id: string) => request<void>(`?resource=folders&id=${id}`, { method: 'DELETE' })
 
 // Documents
-export const listDocuments = (folderId: string | null) =>
-  request<Document[]>(`?resource=documents&folderId=${folderId ?? 'root'}`)
+export const listDocuments = () => request<Document[]>('?resource=documents')
 export const uploadDocument = async (folderId: string | null, file: File) => {
   const base64 = await fileToBase64(file)
   return request<Document>('?resource=documents', {

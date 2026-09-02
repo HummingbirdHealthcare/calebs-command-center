@@ -1,5 +1,6 @@
 const tasks = require('../handlers/tasks');
 const documents = require('../handlers/documents');
+const categories = require('../handlers/categories');
 const { jsonRes } = require('../handlers/shared');
 
 // Single HTTP-trigger router, dispatched by a `resource` query param plus
@@ -17,6 +18,11 @@ module.exports = async function (context, req) {
       if (method === 'POST') return await tasks.createTask(context, req);
       if (method === 'PATCH') return await tasks.updateTask(context, req, id);
       if (method === 'DELETE') return await tasks.deleteTask(context, req, id);
+    } else if (resource === 'categories') {
+      if (method === 'GET') return await categories.listCategories(context, req);
+      if (method === 'POST') return await categories.createCategory(context, req);
+      if (method === 'PATCH') return await categories.updateCategory(context, req, id);
+      if (method === 'DELETE') return await categories.deleteCategory(context, req, id);
     } else if (resource === 'folders') {
       if (method === 'GET') return await documents.listFolders(context, req);
       if (method === 'POST') return await documents.createFolder(context, req);
