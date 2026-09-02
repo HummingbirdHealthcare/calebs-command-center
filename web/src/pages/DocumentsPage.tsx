@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import * as api from '../lib/api'
 import type { Folder } from '../lib/types'
@@ -96,6 +96,8 @@ export default function DocumentsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [rootFolderName, setRootFolderName] = useState('')
   const [openNotesFor, setOpenNotesFor] = useState<string | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const dragCounter = useRef(0)
 
   const { data: documents, isPending: docsPending } = useQuery({
     queryKey: ['documents', selectedId],
@@ -119,6 +121,26 @@ export default function DocumentsPage() {
       await api.uploadDocument(selectedId, file)
     }
     await invalidateDocs()
+  }
+
+  const onDragEnter = (e: React.DragEvent) => {
+    e.preventDefault()
+    dragCounter.current += 1
+    setIsDragging(true)
+  }
+  const onDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+  }
+  const onDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    dragCounter.current = Math.max(0, dragCounter.current - 1)
+    if (dragCounter.current === 0) setIsDragging(false)
+  }
+  const onDrop = async (e: React.DragEvent) => {
+    e.preventDefault()
+    dragCounter.current = 0
+    setIsDragging(false)
+    await onUpload(e.dataTransfer.files)
   }
 
   const download = async (id: string) => {
@@ -175,10 +197,18 @@ export default function DocumentsPage() {
           )}
         </div>
 
-        <div className="document-panel">
+        <div
+          className={`document-panel ${isDragging ? 'document-panel-dragging' : ''}`}
+          onDragEnter={onDragEnter}
+          onDragOver={onDragOver}
+          onDragLeave={onDragLeave}
+          onDrop={(e) => void onDrop(e)}
+        >
           <div className="upload-row">
             <input type="file" multiple onChange={(e) => void onUpload(e.target.files)} />
+            <span className="upload-hint">or drag and drop files here</span>
           </div>
+          {isDragging && <div className="drop-overlay">Drop to upload</div>}
           {docsPending ? (
             <div className="state">Loading…</div>
           ) : (documents ?? []).length === 0 ? (

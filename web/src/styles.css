@@ -237,6 +237,32 @@ select {
   border-radius: 8px;
   padding: 12px;
 }
+.document-panel {
+  position: relative;
+}
+.document-panel-dragging {
+  border-color: var(--accent);
+  border-style: dashed;
+}
+.drop-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(59, 130, 246, 0.08);
+  border-radius: 8px;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 14px;
+  pointer-events: none;
+  z-index: 1;
+}
+.upload-hint {
+  font-size: 12px;
+  color: var(--text-light);
+  margin-left: 8px;
+}
 .folder-row {
   display: flex;
   align-items: center;
