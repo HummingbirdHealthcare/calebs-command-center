@@ -34,4 +34,3 @@ jobs:
           api_location: api
           output_location: ""
           skip_app_build: true
-          production_branch: main
