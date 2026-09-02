@@ -20,6 +20,7 @@ module.exports = async function (context, req) {
     } else if (resource === 'folders') {
       if (method === 'GET') return await documents.listFolders(context, req);
       if (method === 'POST') return await documents.createFolder(context, req);
+      if (method === 'PATCH') return await documents.updateFolder(context, req, id);
       if (method === 'DELETE') return await documents.deleteFolder(context, req, id);
     } else if (resource === 'documents') {
       if (method === 'GET' && req.query.op === 'download') return await documents.getDownloadUrl(context, req, id);

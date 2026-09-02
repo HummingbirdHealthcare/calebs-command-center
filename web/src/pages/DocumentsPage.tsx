@@ -72,6 +72,7 @@ function FolderNode({
   onSelect,
   onAddChild,
   onDelete,
+  onUpdate,
 }: {
   folder: Folder
   folders: Folder[]
@@ -80,9 +81,13 @@ function FolderNode({
   onSelect: (id: string) => void
   onAddChild: (parentId: string, name: string) => Promise<void>
   onDelete: (id: string) => Promise<void>
+  onUpdate: (id: string, changes: { name?: string; summary?: string }) => Promise<void>
 }) {
   const [adding, setAdding] = useState(false)
   const [name, setName] = useState('')
+  const [editing, setEditing] = useState(false)
+  const [editName, setEditName] = useState(folder.name)
+  const [editSummary, setEditSummary] = useState(folder.summary ?? '')
   const kids = folderChildren(folders, folder.id)
 
   const addChild = async () => {
@@ -93,12 +98,28 @@ function FolderNode({
     setAdding(false)
   }
 
+  const startEdit = () => {
+    setEditName(folder.name)
+    setEditSummary(folder.summary ?? '')
+    setEditing(true)
+  }
+
+  const saveEdit = async () => {
+    const trimmedName = editName.trim()
+    if (!trimmedName) return
+    await onUpdate(folder.id, { name: trimmedName, summary: editSummary.trim() })
+    setEditing(false)
+  }
+
   return (
     <div style={{ marginLeft: depth * 16 }}>
       <div className={`folder-row ${selectedId === folder.id ? 'folder-row-selected' : ''}`}>
         <span className="folder-name" onClick={() => onSelect(folder.id)}>
           📁 {folder.name}
         </span>
+        <button type="button" className="folder-action" title="Rename / edit summary" onClick={startEdit}>
+          ✎
+        </button>
         <button type="button" className="folder-action" onClick={() => setAdding((v) => !v)} title="New sub-folder">
           +
         </button>
@@ -113,6 +134,41 @@ function FolderNode({
           ✕
         </button>
       </div>
+      {!editing && folder.summary && (
+        <div className="folder-summary" style={{ marginLeft: 16 }}>
+          {folder.summary}
+        </div>
+      )}
+      {editing && (
+        <div className="folder-edit" style={{ marginLeft: 16 }}>
+          <input
+            value={editName}
+            autoFocus
+            placeholder="Folder name"
+            onChange={(e) => setEditName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setEditing(false)
+            }}
+          />
+          <textarea
+            value={editSummary}
+            placeholder="Short summary of what's in this folder…"
+            rows={2}
+            onChange={(e) => setEditSummary(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setEditing(false)
+            }}
+          />
+          <div className="folder-edit-actions">
+            <button type="button" onClick={() => void saveEdit()}>
+              Save
+            </button>
+            <button type="button" onClick={() => setEditing(false)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
       {adding && (
         <div className="folder-add" style={{ marginLeft: 16 }}>
           <input
@@ -140,6 +196,7 @@ function FolderNode({
           onSelect={onSelect}
           onAddChild={onAddChild}
           onDelete={onDelete}
+          onUpdate={onUpdate}
         />
       ))}
     </div>
@@ -274,6 +331,10 @@ export default function DocumentsPage() {
                   await api.deleteFolder(id)
                   await invalidateFolders()
                   await invalidateDocs()
+                }}
+                onUpdate={async (id, changes) => {
+                  await api.updateFolder(id, changes)
+                  await invalidateFolders()
                 }}
               />
             ))

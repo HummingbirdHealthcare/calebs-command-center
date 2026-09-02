@@ -58,6 +58,8 @@ export const deleteTask = (id: string) => request<void>(`?resource=tasks&id=${id
 export const listFolders = () => request<Folder[]>('?resource=folders')
 export const createFolder = (parentId: string | null, name: string) =>
   request<Folder>('?resource=folders', { method: 'POST', body: JSON.stringify({ parentId, name }) })
+export const updateFolder = (id: string, changes: { name?: string; summary?: string }) =>
+  request<Folder>(`?resource=folders&id=${id}`, { method: 'PATCH', body: JSON.stringify({ op: 'update', ...changes }) })
 export const deleteFolder = (id: string) => request<void>(`?resource=folders&id=${id}`, { method: 'DELETE' })
 
 // Documents

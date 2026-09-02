@@ -23,6 +23,7 @@ export interface Folder {
   type: 'folder'
   parentId: string | null
   name: string
+  summary?: string
   order: number
   createdAt: string
 }

@@ -37,6 +37,30 @@ async function createFolder(context, req) {
   }
 }
 
+async function updateFolder(context, req, id) {
+  if (!requireCaleb(context, req)) return;
+  try {
+    const container = getContainer();
+    const { resource: folder } = await container.item(id, id).read();
+    if (!folder) return jsonRes(context, 404, { error: 'Not found' });
+    const body = req.body || {};
+    if (body.op !== 'update') return jsonRes(context, 400, { error: 'Unknown op' });
+    if (body.name !== undefined) {
+      const name = (body.name || '').trim();
+      if (!name) return jsonRes(context, 400, { error: 'name is required' });
+      folder.name = name;
+    }
+    if (body.summary !== undefined) {
+      folder.summary = (body.summary || '').trim();
+    }
+    const { resource } = await container.item(id, id).replace(folder);
+    jsonRes(context, 200, resource);
+  } catch (e) {
+    if (e.code === 404) return jsonRes(context, 404, { error: 'Not found' });
+    jsonRes(context, 500, { error: e.message });
+  }
+}
+
 // Deleting a folder cascades to every descendant folder AND every document
 // filed anywhere in that subtree — both the Cosmos metadata and the blob
 // bytes get removed, not just the folder record.
@@ -201,6 +225,7 @@ async function getDownloadUrl(context, req, id) {
 module.exports = {
   listFolders,
   createFolder,
+  updateFolder,
   deleteFolder,
   listDocuments,
   uploadDocument,
