@@ -1,0 +1,35 @@
+{
+  "auth": {
+    "identityProviders": {
+      "azureActiveDirectory": {
+        "registration": {
+          "openIdIssuer": "https://login.microsoftonline.com/2f6c9612-8e4f-4b37-beab-264f0ca39ff1/v2.0",
+          "clientIdSettingName": "AAD_CLIENT_ID",
+          "clientSecretSettingName": "AAD_CLIENT_SECRET"
+        }
+      }
+    }
+  },
+  "routes": [
+    { "route": "/.auth/login/aad", "allowedRoles": ["anonymous"] },
+    { "route": "/*.js", "allowedRoles": ["anonymous"] },
+    { "route": "/*.css", "allowedRoles": ["anonymous"] },
+    { "route": "/*.svg", "allowedRoles": ["anonymous"] },
+    { "route": "/*.ico", "allowedRoles": ["anonymous"] },
+    { "route": "/*", "allowedRoles": ["authenticated"] }
+  ],
+  "responseOverrides": {
+    "401": { "redirect": "/.auth/login/aad", "statusCode": 302 }
+  },
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/api/*", "*.css", "*.js", "*.svg", "*.ico", "*.json"]
+  },
+  "mimeTypes": {
+    ".js": "text/javascript",
+    ".mjs": "text/javascript",
+    ".css": "text/css",
+    ".json": "application/json",
+    ".svg": "image/svg+xml"
+  }
+}
