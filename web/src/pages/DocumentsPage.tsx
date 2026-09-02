@@ -8,6 +8,25 @@ function folderChildren(folders: Folder[], parentId: string | null): Folder[] {
   return folders.filter((f) => f.parentId === parentId).sort((a, b) => a.order - b.order)
 }
 
+/** Browsers can already "open" most types by just navigating to them (PDFs/images render
+ *  inline, everything else downloads). Office formats are the exception — browsers can only
+ *  download them — so for those we detect the app and offer the same ms-word:/ms-excel:/
+ *  ms-powerpoint: URI scheme SharePoint/OneDrive use to launch the desktop app directly. */
+function officeAppFor(doc: { name: string; mimeType: string }): { label: string; scheme: string } | null {
+  const ext = doc.name.toLowerCase().split('.').pop() ?? ''
+  const mime = doc.mimeType.toLowerCase()
+  if (ext === 'doc' || ext === 'docx' || mime === 'application/msword' || mime.includes('wordprocessingml')) {
+    return { label: 'Open in Word', scheme: 'ms-word' }
+  }
+  if (ext === 'xls' || ext === 'xlsx' || mime === 'application/vnd.ms-excel' || mime.includes('spreadsheetml')) {
+    return { label: 'Open in Excel', scheme: 'ms-excel' }
+  }
+  if (ext === 'ppt' || ext === 'pptx' || mime === 'application/vnd.ms-powerpoint' || mime.includes('presentationml')) {
+    return { label: 'Open in PowerPoint', scheme: 'ms-powerpoint' }
+  }
+  return null
+}
+
 interface DroppedFile {
   dirPath: string
   file: File
@@ -470,6 +489,13 @@ export default function DocumentsPage() {
     window.open(url, '_blank')
   }
 
+  const openInOfficeApp = async (id: string, scheme: string) => {
+    const { url } = await api.getDownloadUrl(id)
+    // Navigating the current tab (rather than window.open) avoids leaving a stray blank
+    // tab behind — the browser just hands the URL off to the registered protocol handler.
+    window.location.href = `${scheme}:ofe|u|${url}`
+  }
+
   const hasUncategorizedFolders = (folders ?? []).some((f) => f.parentId === null && !f.categoryId)
   const sections: CategorySectionData[] = [
     ...(categories ?? []).map((c) => ({ id: c.id, name: c.name, deletable: true })),
@@ -570,8 +596,18 @@ export default function DocumentsPage() {
                     </span>
                   </div>
                   <div className="document-actions">
+                    {(() => {
+                      const office = officeAppFor(doc)
+                      return (
+                        office && (
+                          <button type="button" onClick={() => void openInOfficeApp(doc.id, office.scheme)}>
+                            {office.label}
+                          </button>
+                        )
+                      )
+                    })()}
                     <button type="button" onClick={() => void download(doc.id)}>
-                      Download
+                      {officeAppFor(doc) ? 'Download' : 'Open'}
                     </button>
                     <button type="button" onClick={() => setOpenNotesFor(openNotesFor === doc.id ? null : doc.id)}>
                       📝{doc.notes.length > 0 ? ` ${doc.notes.length}` : ''}
