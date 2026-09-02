@@ -8,6 +8,62 @@ function folderChildren(folders: Folder[], parentId: string | null): Folder[] {
   return folders.filter((f) => f.parentId === parentId).sort((a, b) => a.order - b.order)
 }
 
+interface DroppedFile {
+  dirPath: string
+  file: File
+}
+
+function readDirectory(reader: FileSystemDirectoryReader): Promise<FileSystemEntry[]> {
+  return new Promise((resolve, reject) => {
+    const all: FileSystemEntry[] = []
+    const readBatch = () => {
+      // readEntries only returns a batch at a time — must keep calling until it returns empty.
+      reader.readEntries((batch) => {
+        if (batch.length === 0) {
+          resolve(all)
+        } else {
+          all.push(...batch)
+          readBatch()
+        }
+      }, reject)
+    }
+    readBatch()
+  })
+}
+
+async function walkEntry(entry: FileSystemEntry, dirPath: string, out: DroppedFile[]): Promise<void> {
+  if (entry.isFile) {
+    const file = await new Promise<File>((resolve, reject) => (entry as FileSystemFileEntry).file(resolve, reject))
+    out.push({ dirPath, file })
+  } else if (entry.isDirectory) {
+    const childPath = dirPath ? `${dirPath}/${entry.name}` : entry.name
+    const children = await readDirectory((entry as FileSystemDirectoryEntry).createReader())
+    for (const child of children) {
+      await walkEntry(child, childPath, out)
+    }
+  }
+}
+
+/** Walks a drop's DataTransferItemList via the File and Directory Entries API so dropped
+ *  folders keep their structure — falls back to a flat file list on browsers/drops where
+ *  entries aren't available (e.g. a plain file drag rather than a folder). */
+async function collectDroppedFiles(dataTransfer: DataTransfer): Promise<DroppedFile[]> {
+  const items = Array.from(dataTransfer.items)
+  const entries = items
+    .map((item) => (typeof item.webkitGetAsEntry === 'function' ? item.webkitGetAsEntry() : null))
+    .filter((entry): entry is FileSystemEntry => entry !== null)
+
+  if (entries.length === 0) {
+    return Array.from(dataTransfer.files).map((file) => ({ dirPath: '', file }))
+  }
+
+  const out: DroppedFile[] = []
+  for (const entry of entries) {
+    await walkEntry(entry, '', out)
+  }
+  return out
+}
+
 function FolderNode({
   folder,
   folders,
@@ -136,11 +192,38 @@ export default function DocumentsPage() {
     dragCounter.current = Math.max(0, dragCounter.current - 1)
     if (dragCounter.current === 0) setIsDragging(false)
   }
+  /** Mirrors dropped folders as nested app folders under the currently selected folder,
+   *  creating each directory level at most once even when many files share it. */
+  const uploadDroppedFiles = async (dropped: DroppedFile[]) => {
+    if (dropped.length === 0) return
+    const folderIdByPath = new Map<string, string | null>([['', selectedId]])
+
+    const resolveFolderId = async (dirPath: string): Promise<string | null> => {
+      const cached = folderIdByPath.get(dirPath)
+      if (cached !== undefined) return cached
+      const lastSlash = dirPath.lastIndexOf('/')
+      const parentPath = lastSlash === -1 ? '' : dirPath.slice(0, lastSlash)
+      const name = lastSlash === -1 ? dirPath : dirPath.slice(lastSlash + 1)
+      const parentId = await resolveFolderId(parentPath)
+      const folder = await api.createFolder(parentId, name)
+      folderIdByPath.set(dirPath, folder.id)
+      return folder.id
+    }
+
+    for (const { dirPath, file } of dropped) {
+      const folderId = await resolveFolderId(dirPath)
+      await api.uploadDocument(folderId, file)
+    }
+    if (folderIdByPath.size > 1) await invalidateFolders()
+    await invalidateDocs()
+  }
+
   const onDrop = async (e: React.DragEvent) => {
     e.preventDefault()
     dragCounter.current = 0
     setIsDragging(false)
-    await onUpload(e.dataTransfer.files)
+    const dropped = await collectDroppedFiles(e.dataTransfer)
+    await uploadDroppedFiles(dropped)
   }
 
   const download = async (id: string) => {
@@ -206,7 +289,7 @@ export default function DocumentsPage() {
         >
           <div className="upload-row">
             <input type="file" multiple onChange={(e) => void onUpload(e.target.files)} />
-            <span className="upload-hint">or drag and drop files here</span>
+            <span className="upload-hint">or drag and drop files or folders here</span>
           </div>
           {isDragging && <div className="drop-overlay">Drop to upload</div>}
           {docsPending ? (
