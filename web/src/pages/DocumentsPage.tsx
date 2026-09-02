@@ -64,6 +64,9 @@ async function collectDroppedFiles(dataTransfer: DataTransfer): Promise<DroppedF
   return out
 }
 
+const DEFAULT_FOLDER_ICON = '📁'
+const FOLDER_ICONS = ['📁', '📂', '🗂️', '📦', '⭐', '🏷️', '💰', '🩺', '📊', '🎯', '🚀', '🔒', '📌', '🧾', '🖼️', '🎬']
+
 function FolderNode({
   folder,
   folders,
@@ -81,13 +84,14 @@ function FolderNode({
   onSelect: (id: string) => void
   onAddChild: (parentId: string, name: string) => Promise<void>
   onDelete: (id: string) => Promise<void>
-  onUpdate: (id: string, changes: { name?: string; summary?: string }) => Promise<void>
+  onUpdate: (id: string, changes: { name?: string; summary?: string; icon?: string }) => Promise<void>
 }) {
   const [adding, setAdding] = useState(false)
   const [name, setName] = useState('')
   const [editing, setEditing] = useState(false)
   const [editName, setEditName] = useState(folder.name)
   const [editSummary, setEditSummary] = useState(folder.summary ?? '')
+  const [editIcon, setEditIcon] = useState(folder.icon ?? DEFAULT_FOLDER_ICON)
   const kids = folderChildren(folders, folder.id)
 
   const addChild = async () => {
@@ -101,13 +105,14 @@ function FolderNode({
   const startEdit = () => {
     setEditName(folder.name)
     setEditSummary(folder.summary ?? '')
+    setEditIcon(folder.icon ?? DEFAULT_FOLDER_ICON)
     setEditing(true)
   }
 
   const saveEdit = async () => {
     const trimmedName = editName.trim()
     if (!trimmedName) return
-    await onUpdate(folder.id, { name: trimmedName, summary: editSummary.trim() })
+    await onUpdate(folder.id, { name: trimmedName, summary: editSummary.trim(), icon: editIcon })
     setEditing(false)
   }
 
@@ -115,7 +120,7 @@ function FolderNode({
     <div style={{ marginLeft: depth * 16 }}>
       <div className={`folder-row ${selectedId === folder.id ? 'folder-row-selected' : ''}`}>
         <span className="folder-name" onClick={() => onSelect(folder.id)}>
-          📁 {folder.name}
+          {folder.icon ?? DEFAULT_FOLDER_ICON} {folder.name}
         </span>
         <button type="button" className="folder-action" title="Rename / edit summary" onClick={startEdit}>
           ✎
@@ -141,6 +146,19 @@ function FolderNode({
       )}
       {editing && (
         <div className="folder-edit" style={{ marginLeft: 16 }}>
+          <div className="folder-icon-picker">
+            {FOLDER_ICONS.map((icon) => (
+              <button
+                key={icon}
+                type="button"
+                className={`folder-icon-option ${icon === editIcon ? 'folder-icon-option-selected' : ''}`}
+                title={icon}
+                onClick={() => setEditIcon(icon)}
+              >
+                {icon}
+              </button>
+            ))}
+          </div>
           <input
             value={editName}
             autoFocus

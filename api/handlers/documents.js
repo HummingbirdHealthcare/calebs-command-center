@@ -53,6 +53,9 @@ async function updateFolder(context, req, id) {
     if (body.summary !== undefined) {
       folder.summary = (body.summary || '').trim();
     }
+    if (body.icon !== undefined) {
+      folder.icon = body.icon || undefined;
+    }
     const { resource } = await container.item(id, id).replace(folder);
     jsonRes(context, 200, resource);
   } catch (e) {

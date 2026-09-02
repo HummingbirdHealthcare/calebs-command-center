@@ -24,6 +24,7 @@ export interface Folder {
   parentId: string | null
   name: string
   summary?: string
+  icon?: string
   order: number
   createdAt: string
 }
